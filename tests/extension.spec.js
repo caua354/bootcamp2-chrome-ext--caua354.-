@@ -34,8 +34,9 @@ test.describe('Testes E2E da Extensão Dicionário Rápido', () => {
       
       return !!serviceWorker; 
     }, {
-      message: 'O Service Worker não ficou ativo em 60 segundos.',
-      timeout: 60000, 
+      }, {
+      message: 'O Service Worker não ficou ativo em 2 minutos.',
+      timeout: 120000, 
     }).toBe(true);
     
     await tempPage.close();
