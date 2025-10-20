@@ -31,18 +31,20 @@ test.describe('Testes E2E da Extensão Dicionário Rápido', () => {
       serviceWorker = context.serviceWorkers().find(
         (sw) => sw.url().includes('service-worker.js') 
       );
-      
       return !!serviceWorker; 
     }, {
-      }, {
-      message: 'O Service Worker não ficou ativo em 3 minutos.',
-      timeout: 180000, 
+      message: 'O Service Worker não ficou ativo em 2 minutos.',
+      
+      timeout: 120000, 
     }).toBe(true);
+    
     
     await tempPage.close();
 
+    
     const extensionId = serviceWorker.url().split('/')[2];
-    const popupUrl = `chrome-extension://${extensionId}/src/popup/popup.html`; 
+    
+    const popupUrl = `chrome-extension://${extensionId}/popup.html`; //
     
     page = await context.newPage();
     await page.goto(popupUrl);
@@ -74,9 +76,8 @@ test.describe('Testes E2E da Extensão Dicionário Rápido', () => {
     const loadingText = page.locator('#result p strong');
     await expect(loadingText).toHaveText(word);
 
-    
     const wordTitle = page.locator('#result h2');
-    await expect(wordTitle).toHaveText(word, { timeout: 10000 }); 
+    await expect(wordTitle).toHaveText(word, { timeout: 10000 });
 
     const definition = page.locator('#result .definition p');
     const definitionText = await definition.textContent();
