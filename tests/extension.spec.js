@@ -10,10 +10,12 @@ const dist = path.resolve(__dirname, '..', 'dist');
 test.describe('Testes E2E da Extensão Dicionário Rápido', () => {
   let context;
   let page;
+  let extensionId;
 
+  
   test.beforeEach(async () => {
     
-    context = await chromium.launchPersistentContext('', {
+    const contextPromise = chromium.launchPersistentContext('', {
       headless: true,
       args: [
         `--disable-extensions-except=${dist}`,
@@ -22,30 +24,27 @@ test.describe('Testes E2E da Extensão Dicionário Rápido', () => {
       ],
     });
 
-    const tempPage = await context.newPage();
-    await tempPage.goto('about:blank');
-
-    let serviceWorker;
-    await expect.poll(async () => {
-      
-      serviceWorker = context.serviceWorkers().find(
-        (sw) => sw.url().includes('service-worker.js') 
-      );
-      return !!serviceWorker; 
-    }, {
-      message: 'O Service Worker não ficou ativo em 2 minutos.',
-      
-      timeout: 120000, 
-    }).toBe(true);
     
-    
-    await tempPage.close();
+    const [context] = await Promise.all([
+      contextPromise,
+      contextPromise.then(ctx => ctx.waitForEvent('console', {
+        predicate: (msg) => msg.text().includes('Service Worker instalado com sucesso'), //
+        timeout: 20000 
+      }))
+    ]);
 
     
-    const extensionId = serviceWorker.url().split('/')[2];
+    const consoleMsg = await context.waitForEvent('console', {
+      predicate: (msg) => msg.text().includes('Service Worker instalado'),
+    });
+    const url = consoleMsg.page()?.url() || '';
+    extensionId = url.split('/')[2];
+
+    if (!extensionId) {
+      throw new Error('Não foi possível capturar o ID da extensão pelo console do Service Worker.');
+    }
     
     const popupUrl = `chrome-extension://${extensionId}/popup.html`; //
-    
     page = await context.newPage();
     await page.goto(popupUrl);
   });
@@ -64,6 +63,7 @@ test.describe('Testes E2E da Extensão Dicionário Rápido', () => {
   });
 
   test('Popup deve buscar e exibir definição para "hello"', async () => {
+  
     const word = 'hello';
 
     await page.evaluate(
@@ -77,7 +77,7 @@ test.describe('Testes E2E da Extensão Dicionário Rápido', () => {
     await expect(loadingText).toHaveText(word);
 
     const wordTitle = page.locator('#result h2');
-    await expect(wordTitle).toHaveText(word, { timeout: 10000 });
+    await expect(wordTitle).toHaveText(word, { timeout: 10000 }); 
 
     const definition = page.locator('#result .definition p');
     const definitionText = await definition.textContent();
